@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>智能电子保费现金券计算器（Demo）</title>
+  <title>智能电子保费现金券计算器</title>
   <style>
     :root{
       --aia:#b80f2e;
@@ -200,24 +200,18 @@
 
 <script>
 (function(){
-  /**
-   * ✅ 关键修正 #1：扣减上限
-   * 为了与 AIA 结果一致（40000/30000 都固定推荐到 2815），上限应为 USD 2815。
-   * 这个值对应 HKD 22,500（2×HKD10,000 + 5×HKD500）的“推荐组合上限”。
-   */
-  const MAX_DEDUCT = 2815;
+  // ✅ 正确：每张保单现金券扣减上限是 HKD 22,500
+  const MAX_DEDUCT_HKD = 22500;
 
-  /**
-   * 券定义（按门槛从大到小）
-   * - 1250 券：每满 12,500（年度化）= 1 张
-   * - 63   券：每满 625（年度化）= 1 张
-   * - 25/13 仅指定保障计划
-   */
+  // 券定义：HKD 面额 + USD 展示面额（按你截图的口径固定展示）
   const COUPONS = [
-    { key:"C1250", face:1250, hkd:10000, eligibleEvery:12500, allow:"general" },
-    { key:"C63",   face:63,   hkd:500,   eligibleEvery:625,   allow:"general" },
-    { key:"C25",   face:25,   hkd:200,   eligibleEvery:250,   allow:"specified" },
-    { key:"C13",   face:13,   hkd:100,   eligibleEvery:125,   allow:"specified" },
+    // 非ILAS通用
+    { key:"C10000", hkd:10000, usd:1250, eligibleEveryUSD:12500, allow:"general" },
+    { key:"C500",   hkd:500,   usd:63,   eligibleEveryUSD:625,   allow:"general" },
+
+    // 指定保障计划（如需）
+    { key:"C200",   hkd:200,   usd:25,   eligibleEveryUSD:250,   allow:"specified" },
+    { key:"C100",   hkd:100,   usd:13,   eligibleEveryUSD:125,   allow:"specified" },
   ];
 
   const $ = (id)=>document.getElementById(id);
@@ -227,71 +221,67 @@
     return `${ccy} ${v.toLocaleString(undefined,{minimumFractionDigits:0, maximumFractionDigits:2})}`;
   }
 
-  function computeAnnualised(payMode, amount){
+  function computeAnnualisedUSD(payMode, amountUSD){
     // 一次性：年度化 = 一次性保费 * 10%
     // 年缴：年度化 = 输入金额
-    return (payMode === "single") ? (amount * 0.10) : amount;
+    return (payMode === "single") ? (amountUSD * 0.10) : amountUSD;
   }
 
   function vipExtras(vip, planType){
-    // 额外券（如你不需要可直接删掉这个功能）
+    // 你暂时不关心也可以保留；如果不需要，直接 return []
     if(vip !== "loyalty") return [];
-    const extras = [{ key:"C63", count:4 }];
-    if(planType === "specified") extras.push({ key:"C25", count:3 });
+    const extras = [{ key:"C500", count:4 }];
+    if(planType === "specified") extras.push({ key:"C200", count:3 });
     return extras;
   }
 
-  /**
-   * ✅ 关键修正 #2：把“资格分配”与“上限占用”绑定在同一个循环里
-   * 这样当上限导致高面额用少了，剩余资格会自动滚到低面额（不会出现 40000 少算 $63 的情况）
-   */
-  function computeUsage(annualised, planType, vip){
-    let eligibilityPool = annualised; // 用于门槛资格（12500/625/…）
-    let capPool = MAX_DEDUCT;         // 用于总金额上限（USD 2815）
+  // ✅ 核心：上限用 HKD 控制，资格用年度化USD控制
+  function computeUsage(annualisedUSD, planType, vip){
+    let eligibilityPoolUSD = annualisedUSD;
+    let capPoolHKD = MAX_DEDUCT_HKD;
 
-    const usedMap = { C1250:0, C63:0, C25:0, C13:0 };
+    const usedMap = { C10000:0, C500:0, C200:0, C100:0 };
 
-    // 先按规则自动分配（从大到小）
     for(const c of COUPONS){
       if(c.allow === "specified" && planType !== "specified") continue;
 
-      const maxByEligibility = Math.floor(eligibilityPool / c.eligibleEvery);
-      const maxByCap = Math.floor(capPool / c.face);
+      const maxByEligibility = Math.floor(eligibilityPoolUSD / c.eligibleEveryUSD);
+      const maxByCap = Math.floor(capPoolHKD / c.hkd);
       const useN = Math.max(0, Math.min(maxByEligibility, maxByCap));
 
       if(useN > 0){
         usedMap[c.key] += useN;
-        eligibilityPool -= useN * c.eligibleEvery;
-        capPool -= useN * c.face;
+        eligibilityPoolUSD -= useN * c.eligibleEveryUSD;
+        capPoolHKD -= useN * c.hkd;
       }
-      if(capPool <= 0) break;
+      if(capPoolHKD <= 0) break;
     }
 
-    // 再叠加特选额外券（也要受 capPool 限制）
+    // 叠加特选额外券（同样受 HKD 上限控制）
     const extras = vipExtras(vip, planType);
     for(const e of extras){
-      if(capPool <= 0) break;
+      if(capPoolHKD <= 0) break;
       const c = COUPONS.find(x=>x.key===e.key);
       if(!c) continue;
-      const maxByCap = Math.floor(capPool / c.face);
+
+      const maxByCap = Math.floor(capPoolHKD / c.hkd);
       const addN = Math.max(0, Math.min(e.count, maxByCap));
       if(addN > 0){
         usedMap[c.key] += addN;
-        capPool -= addN * c.face;
+        capPoolHKD -= addN * c.hkd;
       }
     }
 
-    // 输出 used 列表（只输出>0的）
     const used = [];
     for(const c of COUPONS){
       const n = usedMap[c.key] || 0;
-      if(n > 0) used.push({ face:c.face, hkd:c.hkd, count:n });
+      if(n > 0) used.push({ usd:c.usd, hkd:c.hkd, count:n });
     }
 
-    const deduction = used.reduce((s,u)=>s + u.face*u.count, 0);
-    const payable = Math.max(0, annualised - deduction);
+    const deductionUSD = used.reduce((s,u)=>s + u.usd*u.count, 0);
+    const payableUSD = Math.max(0, annualisedUSD - deductionUSD);
 
-    return { used, deduction, payable };
+    return { used, deductionUSD, payableUSD };
   }
 
   function calc(){
@@ -311,22 +301,22 @@
       return null;
     }
 
-    const annualised = computeAnnualised(payMode, raw);
+    const annualisedUSD = computeAnnualisedUSD(payMode, raw);
 
     if(planType === "ilas"){
-      return { ccy, payMode, planType, vip, annualised, deduction:0, payable:annualised, used:[] };
+      return { ccy, payMode, planType, vip, annualisedUSD, deductionUSD:0, payableUSD:annualisedUSD, used:[] };
     }
 
-    const { used, deduction, payable } = computeUsage(annualised, planType, vip);
-    return { ccy, payMode, planType, vip, annualised, deduction, payable, used };
+    const { used, deductionUSD, payableUSD } = computeUsage(annualisedUSD, planType, vip);
+    return { ccy, payMode, planType, vip, annualisedUSD, deductionUSD, payableUSD, used };
   }
 
   function render(res){
     $("resultWrap").style.display = "block";
 
-    $("beforeAmt").textContent = fmtMoney(res.ccy, res.annualised);
-    $("totalDeduction").textContent = fmtMoney(res.ccy, res.deduction);
-    $("payableAfter").textContent = fmtMoney(res.ccy, res.payable);
+    $("beforeAmt").textContent = fmtMoney(res.ccy, res.annualisedUSD);
+    $("totalDeduction").textContent = fmtMoney(res.ccy, res.deductionUSD);
+    $("payableAfter").textContent = fmtMoney(res.ccy, res.payableUSD);
 
     const warnBox = $("warnBox");
     if(res.planType === "ilas"){
@@ -348,7 +338,7 @@
         card.className = "coupon";
         card.innerHTML = `
           <div class="couponLeft">
-            <div class="couponValue">$${u.face} <span style="font-size:14px;color:var(--muted);font-weight:900;">${res.ccy}</span></div>
+            <div class="couponValue">$${u.usd} <span style="font-size:14px;color:var(--muted);font-weight:900;">${res.ccy}</span></div>
             <div class="couponSub">（HKD ${u.hkd.toLocaleString()}）电子保费现金券</div>
           </div>
           <div class="couponRight">${u.count} 张</div>
@@ -359,7 +349,7 @@
 
     const modeText = (res.payMode === "single") ? "一次性缴付（已按10%换算年度化）" : "年缴";
     const vipText = (res.vip === "loyalty") ? "特选客户" : "非特选客户";
-    $("footnote").textContent = `当前口径：${modeText}；${vipText}；每张保单扣减上限：USD ${MAX_DEDUCT.toLocaleString()}。`;
+    $("footnote").textContent = `当前口径：${modeText}；${vipText}；每张保单扣减上限：HKD ${MAX_DEDUCT_HKD.toLocaleString()}。`;
   }
 
   function syncLabel(){
@@ -369,7 +359,7 @@
 
   function renderCapNote(){
     $("capNote").textContent =
-      `说明：一次性缴付会先按条款换算年度化（10%）再计算张数；年缴直接以年度化金额计算。每张保单扣减上限：USD ${MAX_DEDUCT.toLocaleString()}。`;
+      `说明：一次性缴付会先按条款换算年度化（10%）再计算张数；年缴直接以年度化金额计算。每张保单扣减上限：HKD ${MAX_DEDUCT_HKD.toLocaleString()}。`;
   }
 
   $("payMode").addEventListener("change", syncLabel);
