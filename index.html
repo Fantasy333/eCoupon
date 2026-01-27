@@ -3,103 +3,297 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>电子保费现金券计算器（Demo）</title>
+  <title>电子保费现金券计算器</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50">
-  <div class="max-w-xl mx-auto p-5">
-    <div class="bg-white rounded-2xl shadow p-5">
-      <div class="text-xl font-semibold">电子保费现金券计算器（展示版）</div>
-      <div class="text-xs text-gray-500 mt-1">用于企业微信工作台演示；结果仅作展示</div>
 
-      <div class="mt-5 space-y-3">
+<body class="bg-gray-50">
+  <div class="max-w-3xl mx-auto p-6">
+    <div class="bg-white rounded-2xl shadow p-6">
+      <h1 class="text-2xl font-semibold">智能电子保费现金券计算器</h1>
+      <p class="text-sm text-gray-500 mt-1">已按 Python 文件（EPremiumCouponCalculator）规则实现（USD）。</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
         <div>
-          <label class="text-sm font-medium">保费类型</label>
-          <select id="type" class="mt-1 w-full border rounded-lg p-2">
-            <option value="annual">年缴</option>
-            <option value="lump">一次性</option>
+          <label class="text-sm font-medium">缴费方式</label>
+          <select id="premium_type" class="mt-1 w-full border rounded-lg p-2">
+            <option value="annual">年缴保费 (annual)</option>
+            <option value="lump_sum">一次性缴费 (lump_sum)</option>
           </select>
         </div>
 
         <div>
           <label class="text-sm font-medium">保费金额（USD）</label>
-          <input id="amt" type="number" step="0.01" class="mt-1 w-full border rounded-lg p-2" placeholder="例如 5000">
+          <input id="premium_amount" type="number" step="0.01" class="mt-1 w-full border rounded-lg p-2" placeholder="例如 5000" />
         </div>
 
-        <div>
-          <label class="text-sm font-medium">计划名称（可选）</label>
-          <input id="plan" class="mt-1 w-full border rounded-lg p-2" placeholder="例如 自愿医保灵活计划 / 爱伴航...">
+        <div class="md:col-span-2">
+          <label class="text-sm font-medium">计划名称（可选，用于资格校验）</label>
+          <input id="plan_name" class="mt-1 w-full border rounded-lg p-2" placeholder="例如 自愿医保灵活计划 / 爱伴航..." />
         </div>
 
         <div class="flex items-center gap-2">
-          <input id="ilas" type="checkbox" class="h-4 w-4">
-          <label for="ilas" class="text-sm">ILAS</label>
+          <input id="is_ilas" type="checkbox" class="h-4 w-4" />
+          <label for="is_ilas" class="text-sm">是否 ILAS（投资相连寿险计划）</label>
         </div>
 
-        <button id="btn" class="w-full bg-black text-white rounded-xl py-2 hover:opacity-90">
-          计算（Demo）
-        </button>
-
-        <div id="out" class="hidden border rounded-xl p-4 bg-gray-50">
-          <div class="text-sm text-gray-600">结果</div>
-          <pre id="json" class="text-xs mt-2 whitespace-pre-wrap"></pre>
+        <div>
+          <label class="text-sm font-medium">额外保费 extra_premium（USD，仅爱伴航用到）</label>
+          <input id="extra_premium" type="number" step="0.01" class="mt-1 w-full border rounded-lg p-2" value="0" />
         </div>
 
-        <div class="text-[11px] text-gray-400">
-          注：这是展示用 Demo。后续你要接真实计算逻辑/免登/权限，再升级为后端接口版即可。
+        <div class="flex items-center gap-2">
+          <input id="has_other_discount" type="checkbox" class="h-4 w-4" />
+          <label for="has_other_discount" class="text-sm">是否有其他推广计划保费扣减</label>
         </div>
+
+        <div>
+          <label class="text-sm font-medium">扣减百分比 discount_rate（0-100）</label>
+          <input id="discount_rate" type="number" step="0.01" class="mt-1 w-full border rounded-lg p-2" value="0" />
+        </div>
+      </div>
+
+      <button id="btn" class="mt-6 bg-black text-white rounded-xl px-4 py-2 hover:opacity-90">
+        计算
+      </button>
+
+      <div id="error" class="mt-4 text-sm text-red-600 hidden"></div>
+
+      <div id="result" class="mt-6 hidden">
+        <div class="border rounded-xl p-4 bg-gray-50">
+          <div class="text-sm text-gray-500">年度化保费（USD）</div>
+          <div id="annualized" class="text-2xl font-semibold mt-1"></div>
+        </div>
+
+        <div class="mt-4 border rounded-xl p-4">
+          <div class="font-medium">现金券明细</div>
+          <div id="coupons" class="mt-2 text-sm text-gray-700"></div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="border rounded-xl p-4">
+            <div class="text-sm text-gray-500">总扣减（USD）</div>
+            <div id="deduction" class="text-lg font-semibold mt-1"></div>
+          </div>
+          <div class="border rounded-xl p-4">
+            <div class="text-sm text-gray-500">扣减后需缴付（USD）</div>
+            <div id="payable" class="text-lg font-semibold mt-1"></div>
+          </div>
+          <div class="border rounded-xl p-4">
+            <div class="text-sm text-gray-500">港元总价值（HKD）</div>
+            <div id="hkd" class="text-lg font-semibold mt-1"></div>
+          </div>
+        </div>
+
+        <details class="mt-4 border rounded-xl p-4">
+          <summary class="cursor-pointer font-medium">货币转换比例参考（仅展示）</summary>
+          <div id="ratios" class="mt-2 text-sm text-gray-700"></div>
+        </details>
       </div>
     </div>
   </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
-  const fmt = (n) => Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  // 纯展示：随便做个“看起来像”现金券策略的 demo（你说结果不重要）
-  function demoCalc(amount, isIlas){
-    const coupons = [];
-    let remain = amount;
-    const order = isIlas ? [63,25,13] : [1250,125,63,25,13];
-    const caps = {1250:2,125:18,63:36,25:90,13:180};
-    const maxDeduction = 2925; // 看起来像真实上限
-    let used = 0;
+  function showError(msg){
+    const el = $("error");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  }
+  function clearError(){
+    const el = $("error");
+    el.textContent = "";
+    el.classList.add("hidden");
+  }
+  const money = (n) => "$" + Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
 
-    for(const v of order){
-      if(remain <= 0) break;
-      let n = Math.min(Math.floor(remain / v), caps[v]);
-      if(used + n*v > maxDeduction){
-        n = Math.floor((maxDeduction - used)/v);
+  // ==== 从你的 Python 文件移植的配置 ====
+  const couponConfigs = {
+    1250: { name:"10,000港元现金券", hkd_value:10000, usd_value:1250, min_premium_usd:1250, eligible_per_amount_usd:1250, max_usable_per_policy:2,
+            excluded_plans:["投资连繫寿险","万用寿险","ILAS","投资相连寿险"] },
+    125:  { name:"1,000港元现金券", hkd_value:1000, usd_value:125, min_premium_usd:125, eligible_per_amount_usd:125, max_usable_per_policy:18,
+            excluded_plans:["投资连繫寿险","万用寿险","ILAS","投资相连寿险"] },
+    63:   { name:"500港元现金券", hkd_value:500, usd_value:63, min_premium_usd:63, eligible_per_amount_usd:63, max_usable_per_policy:36 },
+    25:   { name:"200港元现金券", hkd_value:200, usd_value:25, min_premium_usd:25, eligible_per_amount_usd:25, max_usable_per_policy:90,
+            eligible_plans:[
+              "唯一挚保 — 癌症及严重传染病保障系列","唯一挚保 — 全面保障系列","自愿医保灵活计划","自愿医保标准计划","自愿医保尊耀计划","自愿医保睿选计划",
+              "智护癌症保","癌症全方位保障系列","守康易危疾保","守康易定期寿险计划","全程守护健康保","进添计划 — 癌症保障系列",
+              "都市三保医疗危疾保障计划系列","自选人身意外保险","尊耀医疗计划系列","尊耀明珠医疗计划","银意保","简护危疾保系列",
+              "友心意医疗保障计划","特级健康之宝医疗保障计划系列","童年意家保","盛年意家保","丰年意家保",
+              "挚诚定期寿险计划系列","尊诚定期寿险计划系列","睿选明珠医疗计划","睿选医疗计划"
+            ]},
+    13:   { name:"100港元现金券", hkd_value:100, usd_value:13, min_premium_usd:13, eligible_per_amount_usd:13, max_usable_per_policy:180,
+            eligible_plans:[
+              "唯一挚保 — 癌症及严重传染病保障系列","唯一挚保 — 全面保障系列","自愿医保灵活计划","自愿医保标准计划","自愿医保尊耀计划","自愿医保睿选计划",
+              "智护癌症保","癌症全方位保障系列","守康易危疾保","守康易定期寿险计划","全程守护健康保","进添计划 — 癌症保障系列",
+              "都市三保医疗危疾保障计划系列","自选人身意外保险","尊耀医疗计划系列","尊耀明珠医疗计划","银意保","简护危疾保系列",
+              "友心意医疗保障计划","特级健康之宝医疗保障计划系列","童年意家保","盛年意家保","丰年意家保",
+              "挚诚定期寿险计划系列","尊诚定期寿险计划系列","睿选明珠医疗计划","睿选医疗计划"
+            ]}
+  };
+
+  const deductionOrder = [1250,125,63,25,13];
+  const maxDeductionUsd = 2925;
+  const maxDeductionHkd = 22500;
+
+  const currencyRatios = {
+    "HKD":"1.00","MOP":"1.00","RMB":"0.84","USD":"0.125","AUD":"0.125","CAD":"0.125","GBP":"0.075","EUR":"0.0875","SGD":"0.15"
+  };
+
+  function checkPlanEligibility(planName, couponValue){
+    const cfg = couponConfigs[couponValue];
+
+    if([1250,125].includes(couponValue)){
+      if(cfg.excluded_plans){
+        for(const ex of cfg.excluded_plans){
+          if(planName.includes(ex)) return false;
+        }
       }
-      if(n > 0){
-        coupons.push({value_usd:v, count:n, subtotal_usd:n*v});
-        used += n*v;
-        remain -= n*v;
+      return true;
+    }
+
+    if([25,13].includes(couponValue)){
+      if(cfg.eligible_plans){
+        for(const ok of cfg.eligible_plans){
+          if(planName.includes(ok)) return true;
+        }
+        return false;
+      }
+      return true;
+    }
+
+    if(couponValue === 63){
+      if(cfg.excluded_plans){
+        for(const ex of cfg.excluded_plans){
+          if(planName.includes(ex)) return false;
+        }
+      }
+      return true;
+    }
+
+    return true;
+  }
+
+  function calculateCoupons(premiumUsd, planName="", isIlas=false){
+    let remaining = premiumUsd;
+    let totalDeduction = 0;
+    const used = {};
+
+    const validCoupons = isIlas ? [63,25,13] : deductionOrder;
+
+    for(const couponValue of validCoupons){
+      if(remaining <= 0) continue;
+
+      const cfg = couponConfigs[couponValue];
+
+      if(planName && !checkPlanEligibility(planName, couponValue)){
+        continue;
+      }
+
+      let maxByPremium = Math.floor(remaining / cfg.eligible_per_amount_usd);
+      if(remaining < cfg.min_premium_usd) maxByPremium = 0;
+
+      const maxByPolicy = cfg.max_usable_per_policy;
+      let usableCount = Math.min(maxByPremium, maxByPolicy);
+
+      if(totalDeduction + usableCount * couponValue > maxDeductionUsd){
+        const remainingDeduction = maxDeductionUsd - totalDeduction;
+        usableCount = Math.min(usableCount, Math.floor(remainingDeduction / couponValue));
+      }
+
+      if(usableCount > 0){
+        used[couponValue] = usableCount;
+        const deduction = usableCount * couponValue;
+        totalDeduction += deduction;
+        remaining -= deduction;
       }
     }
-    return {coupons, total_deduction_usd: used, payable_usd: Math.max(0, amount-used)};
+
+    return { used, totalDeduction, remaining };
+  }
+
+  function calculateAnnualizedPremium(premiumType, premiumAmount, planName="", extraPremium=0, hasOtherDiscount=false, discountRate=0){
+    let annualized = 0;
+
+    if(premiumType === "lump_sum"){
+      if(planName && (planName.includes("爱伴航") || planName.includes("Companion"))){
+        if(hasOtherDiscount){
+          annualized = premiumAmount * (1 - discountRate/100) + extraPremium * (0.1 * (1 - discountRate/100));
+        }else{
+          annualized = premiumAmount * 1.0 + extraPremium * 0.1;
+        }
+      }else{
+        annualized = premiumAmount;
+      }
+    }else{
+      annualized = premiumAmount;
+    }
+
+    return annualized;
+  }
+
+  function renderRatios(){
+    const lines = Object.entries(currencyRatios)
+      .filter(([k]) => k !== "HKD")
+      .map(([k,v]) => `<div>100 HKD ≈ <span class="font-medium">${v}</span> ${k}</div>`)
+      .join("");
+    $("ratios").innerHTML = lines || "<div>（无）</div>";
   }
 
   $("btn").addEventListener("click", () => {
-    const amount = Number($("amt").value || 0);
-    const plan = $("plan").value || "";
-    const type = $("type").value;
-    const ilas = $("ilas").checked;
+    clearError();
 
-    const annualized = type === "lump" ? amount : amount; // demo不区分
-    const r = demoCalc(annualized, ilas);
+    const premiumType = $("premium_type").value;
+    const premiumAmount = Number($("premium_amount").value || 0);
+    const planName = $("plan_name").value || "";
+    const isIlas = $("is_ilas").checked;
+    const extraPremium = Number($("extra_premium").value || 0);
+    const hasOtherDiscount = $("has_other_discount").checked;
+    const discountRate = Number($("discount_rate").value || 0);
 
-    const result = {
-      premium_type: type,
-      premium_amount_usd: amount,
-      annualized_premium_usd: annualized,
-      plan_name: plan,
-      is_ilas: ilas,
-      ...r
-    };
+    if(!premiumAmount || premiumAmount < 0){
+      showError("请填写有效的保费金额（USD）。");
+      return;
+    }
+    if(discountRate < 0 || discountRate > 100){
+      showError("discount_rate 必须在 0-100 之间。");
+      return;
+    }
 
-    $("out").classList.remove("hidden");
-    $("json").textContent = JSON.stringify(result, null, 2);
+    const annualized = calculateAnnualizedPremium(
+      premiumType, premiumAmount, planName, extraPremium, hasOtherDiscount, discountRate
+    );
+
+    const { used, totalDeduction, remaining } = calculateCoupons(annualized, planName, isIlas);
+
+    // 组装展示
+    const usedEntries = Object.entries(used).map(([k,v]) => [Number(k), v]).sort((a,b)=>b[0]-a[0]);
+    let totalHkd = 0;
+    let totalCount = 0;
+
+    if(usedEntries.length === 0){
+      $("coupons").innerHTML = "<div>无可用现金券</div>";
+    }else{
+      $("coupons").innerHTML = usedEntries.map(([couponUsd, count]) => {
+        const cfg = couponConfigs[couponUsd];
+        const hkdTotal = cfg.hkd_value * count;
+        totalHkd += hkdTotal;
+        totalCount += count;
+        return `<div class="py-1">
+          <span class="font-medium">${cfg.name}</span>：${count} 张
+          <span class="text-gray-500">(USD ${couponUsd} × ${count}；HKD ${hkdTotal.toLocaleString()})</span>
+        </div>`;
+      }).join("") + `<div class="mt-2 text-gray-500">合计：${totalCount} 张；扣减上限：USD ${maxDeductionUsd}（HKD ${maxDeductionHkd.toLocaleString()}）</div>`;
+    }
+
+    $("result").classList.remove("hidden");
+    $("annualized").textContent = money(annualized);
+    $("deduction").textContent = money(totalDeduction);
+    $("payable").textContent = money(remaining);
+    $("hkd").textContent = "HKD " + totalHkd.toLocaleString();
+
+    renderRatios();
   });
 </script>
 </body>
