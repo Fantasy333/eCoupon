@@ -1,519 +1,332 @@
 <!doctype html>
-<html lang="zh-Hans">
+<html lang="zh-HK">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>电子保费现金券计算器</title>
+  <title>智能电子保费现金券计算器（Demo）</title>
   <style>
-    :root { --bg:#0b1020; --card:#111a33; --text:#e7ecff; --muted:#a8b3d6; --line:#22305e; --accent:#7aa2ff; --good:#48d597; --bad:#ff6b6b; }
-    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC","Microsoft YaHei", Arial; background: linear-gradient(180deg,#070b18 0%, #0b1020 55%, #070b18 100%); color:var(--text); }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 18px 14px 42px; }
-    .title { font-size: 18px; font-weight: 700; margin: 10px 0 4px; }
-    .sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
-    .grid { display:grid; gap:12px; grid-template-columns: 1fr; }
-    @media (min-width: 900px){ .grid { grid-template-columns: 1fr 1fr; } }
-    .card { background: rgba(17,26,51,.88); border: 1px solid rgba(34,48,94,.9); border-radius: 14px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.28); }
-    .row { display:grid; grid-template-columns: 140px 1fr; gap:10px; align-items:center; margin: 10px 0; }
-    .row label { color: var(--muted); font-size: 13px; }
-    input, select { width:100%; box-sizing:border-box; padding: 10px 10px; border-radius: 10px; border: 1px solid rgba(34,48,94,.95); background: #0b1330; color: var(--text); outline: none; }
-    input::placeholder{ color: rgba(168,179,214,.6); }
-    .inline { display:flex; gap:10px; align-items:center; }
-    .inline input[type="checkbox"]{ width:auto; transform: scale(1.1); }
-    .btns { display:flex; gap:10px; margin-top: 12px; }
-    button { cursor:pointer; border:0; border-radius: 12px; padding: 11px 12px; font-weight: 700; }
-    .primary { background: var(--accent); color:#07102a; }
-    .ghost { background: transparent; color: var(--text); border: 1px solid rgba(34,48,94,.95); }
-    .hr { height:1px; background: rgba(34,48,94,.9); margin: 12px 0; }
-    .kpi { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    .k { background: rgba(11,19,48,.75); border: 1px solid rgba(34,48,94,.9); border-radius: 12px; padding: 10px; }
-    .k .t{ color: var(--muted); font-size: 12px; }
-    .k .v{ font-size: 16px; font-weight: 800; margin-top: 6px; }
-    .tag { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; border:1px solid rgba(34,48,94,.95); background: rgba(11,19,48,.55); color: var(--muted); }
-    table { width:100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 10px 8px; border-bottom: 1px solid rgba(34,48,94,.75); text-align:left; }
-    th { color: var(--muted); font-weight: 700; }
-    .ok { color: var(--good); font-weight: 800; }
-    .no { color: var(--bad); font-weight: 800; }
-    .foot { color: rgba(168,179,214,.75); font-size: 12px; line-height: 1.5; margin-top: 10px; }
-    .small { font-size: 12px; color: rgba(168,179,214,.8); }
+    :root{
+      --aia:#b80f2e;
+      --bg:#f5f6f8;
+      --card:#ffffff;
+      --text:#1f2328;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow:0 8px 24px rgba(0,0,0,.08);
+      --radius:16px;
+    }
+    body{ margin:0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang HK","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); }
+    .topbar{ background:var(--aia); color:#fff; padding:14px 16px; font-weight:700; position:sticky; top:0; z-index:10; }
+    .wrap{ max-width:720px; margin:0 auto; padding:14px 14px 40px; }
+    .hint{ text-align:center; color:var(--aia); font-weight:700; margin:10px 0 14px; }
+    .panel{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px; }
+    .sectionTitle{ font-size:18px; font-weight:800; margin:6px 0 12px; }
+    .grid{ display:grid; grid-template-columns:1fr; gap:10px; }
+    .row{ display:grid; grid-template-columns: 140px 1fr; gap:10px; align-items:center; }
+    label{ color:var(--muted); font-weight:700; font-size:14px; }
+    select,input{ width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border); outline:none; font-size:15px; background:#fff; }
+    input[type="number"]{ appearance:textfield; }
+    .btn{
+      margin-top:10px; width:100%; padding:12px 14px; border:none; border-radius:14px;
+      background:var(--aia); color:#fff; font-weight:800; font-size:16px; cursor:pointer;
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .resultWrap{ margin-top:14px; }
+    .resultCard{
+      background:#fff; border-radius:var(--radius); border:1px solid var(--border);
+      box-shadow:var(--shadow); padding:14px;
+    }
+    .kv{ display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed var(--border); }
+    .kv:last-child{ border-bottom:none; }
+    .k{ color:var(--muted); font-weight:700; }
+    .v{ font-weight:900; }
+    .big{ font-size:28px; color:var(--aia); }
+    .couponList{ display:grid; gap:10px; margin-top:12px; }
+    .coupon{
+      border:1px solid var(--border); border-radius:14px; padding:12px; display:flex; align-items:center; justify-content:space-between;
+      background:linear-gradient(180deg,#fff, #fafafa);
+    }
+    .couponLeft{ display:flex; flex-direction:column; gap:2px; }
+    .couponValue{ font-size:28px; font-weight:1000; color:#6b5bd6; }
+    .couponSub{ color:var(--muted); font-weight:700; }
+    .couponRight{ font-size:28px; font-weight:1000; color:var(--aia); }
+    .note{ margin-top:10px; color:var(--muted); font-size:13px; line-height:1.5; }
+    .warn{ margin-top:10px; padding:10px 12px; border-radius:14px; background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; font-weight:700; }
+    @media (min-width: 680px){
+      .grid{ grid-template-columns:1fr 1fr; }
+      .row{ grid-template-columns: 160px 1fr; }
+      .span2{ grid-column: span 2; }
+    }
   </style>
 </head>
 <body>
+  <div class="topbar">智能电子保费现金券计算器（Demo）</div>
+
   <div class="wrap">
-    <div class="title">电子保费现金券计算器（H5 演示版）</div>
-    <p class="sub">
-      说明：本页面为演示用途。现金券仅适用于「一次性缴付」与「年缴」的新保单（半年/季/月缴不适用）。:contentReference[oaicite:5]{index=5}
-      <br/>计算逻辑基于你提供的 Python 文件（券种配置/扣减顺序/ILAS 限制/上限等）。
-    </p>
+    <div class="hint">数据只作参考及只供内部使用</div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="tag">输入区</div>
+    <div class="panel">
+      <div class="sectionTitle">输入资料</div>
 
-        <div class="row">
-          <label>缴费方式</label>
-          <select id="premiumType">
-            <option value="lump_sum">一次性缴付 (Lump Sum)</option>
-            <option value="annual">年缴 (Annual)</option>
+      <div class="grid">
+        <div class="row span2">
+          <label>保费缴付年期</label>
+          <select id="payMode">
+            <option value="annual">年缴保费缴付期（不适用于半年/季/月）</option>
+            <option value="single">一次性保费缴付期</option>
+          </select>
+        </div>
+
+        <div class="row span2">
+          <label>保险计划</label>
+          <select id="planType">
+            <option value="general">其他（非ILAS）</option>
+            <option value="specified">指定保障计划（可用$25/$13）</option>
+            <option value="ilas">ILAS / 万用 / 投连（不适用）</option>
           </select>
         </div>
 
         <div class="row">
-          <label>保单类型</label>
-          <select id="policyType">
-            <option value="non_ilas">非 ILAS（储蓄/其他）</option>
-            <option value="ilas">ILAS（投资相连寿险）</option>
-            <option value="plan2">“计划2 / 含额外保费”(示例4那种：定期保费+额外保费)</option>
+          <label>币种</label>
+          <select id="ccy">
+            <option value="USD">USD</option>
+            <!-- 需要的话你再加 AUD/CAD，券面等值目前跟 USD63/25/13 一样显示即可 -->
           </select>
         </div>
 
         <div class="row">
-          <label>保险计划名称</label>
-          <input id="planName" placeholder="可留空；如要用 200/100 券需匹配指定计划名称" />
+          <label id="amtLabel">年度化保费金额</label>
+          <input id="amount" type="number" min="0" step="1" placeholder="例如 10000" />
         </div>
 
-        <div class="row">
-          <label>保费金额(USD)</label>
-          <input id="premiumAmount" inputmode="decimal" placeholder="例如 5000 或 5,000" />
-        </div>
-
-        <div class="row" id="regularPremiumRow" style="display:none;">
-          <label>首年定期保费(USD)</label>
-          <input id="regularPremium" inputmode="decimal" placeholder="例如 620" />
-        </div>
-
-        <div class="row" id="extraPremiumRow" style="display:none;">
-          <label>额外保费(USD)</label>
-          <input id="extraPremium" inputmode="decimal" placeholder="例如 4380" />
-        </div>
-
-        <div class="row">
-          <label>其他推广折扣</label>
-          <div class="inline">
-            <input id="hasDiscount" type="checkbox" />
-            <span class="small">勾选后按折扣率先扣减保费（演示用）</span>
-          </div>
-        </div>
-
-        <div class="row" id="discountRateRow" style="display:none;">
-          <label>折扣率(%)</label>
-          <input id="discountRate" inputmode="decimal" placeholder="例如 10 表示 10%" />
-        </div>
-
-        <div class="btns">
-          <button class="primary" id="btnCalc">开始计算</button>
-          <button class="ghost" id="btnFillDemo">填入示例4</button>
-          <button class="ghost" id="btnReset">清空</button>
-        </div>
-
-        <div class="foot">
-          备注：一次性缴付的“年度化保费”按条款规则换算（页面仅做演示口径）；年缴则按年缴金额计入年度化保费。:contentReference[oaicite:6]{index=6}
+        <div class="row span2">
+          <label>是否特选客户（2026/01/01 - 2026/03/31）</label>
+          <select id="vip">
+            <option value="none">否</option>
+            <option value="loyalty">Recapture（尊贵客户VIP） / Activation 推荐活动客户</option>
+          </select>
         </div>
       </div>
 
-      <div class="card">
-        <div class="tag">结果区</div>
+      <button class="btn" id="calcBtn">计算</button>
 
-        <div class="kpi">
-          <div class="k">
-            <div class="t">年度化保费 (USD)</div>
-            <div class="v" id="kAnnualized">-</div>
-          </div>
-          <div class="k">
-            <div class="t">ILAS 限制</div>
-            <div class="v" id="kIlas">-</div>
-          </div>
-          <div class="k">
-            <div class="t">总扣减 (USD)</div>
-            <div class="v" id="kDeduction">-</div>
-          </div>
-          <div class="k">
-            <div class="t">扣减后应付 (USD)</div>
-            <div class="v" id="kPayable">-</div>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div style="font-weight:800; margin-bottom:8px;">现金券使用明细</div>
-        <table>
-          <thead>
-            <tr>
-              <th>面额</th>
-              <th>名称</th>
-              <th>张数</th>
-              <th>扣减(USD)</th>
-            </tr>
-          </thead>
-          <tbody id="couponRows">
-            <tr><td colspan="4" class="small">暂无结果</td></tr>
-          </tbody>
-        </table>
-
-        <div class="foot">
-          每张保单扣减上限：22500 HKD (= 2925 USD)。:contentReference[oaicite:7]{index=7}
-        </div>
+      <div class="note">
+        说明：本 Demo 仅复刻“推荐可用现金券张数”的展示效果。一次性缴费会按条款把一次性保费换算成年度化保费（10%）后再计算。
       </div>
     </div>
+
+    <div class="resultWrap" id="resultWrap" style="display:none;">
+      <div class="resultCard">
+        <div class="sectionTitle">结果</div>
+
+        <div class="kv">
+          <div class="k">建议可使用以下电子保费现金券（总金额）</div>
+          <div class="v big" id="totalDeduction">USD 0</div>
+        </div>
+
+        <div class="couponList" id="couponList"></div>
+
+        <div class="kv" style="margin-top:10px;">
+          <div class="k">保费折扣优惠后应缴首年年度化保费金额（包括以上电子保费现金券）</div>
+          <div class="v" id="payableAfter">USD 0</div>
+        </div>
+
+        <div class="kv">
+          <div class="k">优惠前应缴首年年度化保费金额</div>
+          <div class="v" id="beforeAmt">USD 0</div>
+        </div>
+
+        <div class="note" id="footnote"></div>
+
+        <div class="warn" id="warnBox" style="display:none;"></div>
+      </div>
+    </div>
+
   </div>
 
 <script>
-(function(){
-  // ====== 你的 Python 配置（原样搬运） ======
-  const couponConfigs = {
-    1250: {
-      name: "10,000港元现金券",
-      hkd_value: 10000,
-      usd_value: 1250,
-      min_premium_usd: 1250,
-      eligible_per_amount_usd: 1250,
-      max_usable_per_policy: 2,
-      excluded_plans: ["投资连繫寿险", "万用寿险", "ILAS", "投资相连寿险"]
-    },
-    125: {
-      name: "1,000港元现金券",
-      hkd_value: 1000,
-      usd_value: 125,
-      min_premium_usd: 125,
-      eligible_per_amount_usd: 125,
-      max_usable_per_policy: 18,
-      excluded_plans: ["投资连繫寿险", "万用寿险", "ILAS", "投资相连寿险"]
-    },
-    63: {
-      name: "500港元现金券",
-      hkd_value: 500,
-      usd_value: 63,
-      min_premium_usd: 63,
-      eligible_per_amount_usd: 63,
-      max_usable_per_policy: 36
-      // 你 Python 这里默认适用所有计划（无排除）
-    },
-    25: {
-      name: "200港元现金券",
-      hkd_value: 200,
-      usd_value: 25,
-      min_premium_usd: 25,
-      eligible_per_amount_usd: 25,
-      max_usable_per_policy: 90,
-      eligible_plans: [
-        "唯一挚保 — 癌症及严重传染病保障系列",
-        "唯一挚保 — 全面保障系列",
-        "自愿医保灵活计划",
-        "自愿医保标准计划",
-        "自愿医保尊耀计划",
-        "自愿医保睿选计划",
-        "智护癌症保",
-        "癌症全方位保障系列",
-        "守康易危疾保",
-        "守康易定期寿险计划",
-        "全程守护健康保",
-        "进添计划 — 癌症保障系列",
-        "都市三保医疗危疾保障计划系列",
-        "自选人身意外保险",
-        "尊耀医疗计划系列",
-        "尊耀明珠医疗计划",
-        "银意保",
-        "简护危疾保系列",
-        "友心意医疗保障计划",
-        "特级健康之宝医疗保障计划系列",
-        "童年意家保", "盛年意家保", "丰年意家保",
-        "挚诚定期寿险计划系列",
-        "尊诚定期寿险计划系列",
-        "睿选明珠医疗计划",
-        "睿选医疗计划"
-      ]
-    },
-    13: {
-      name: "100港元现金券",
-      hkd_value: 100,
-      usd_value: 13,
-      min_premium_usd: 13,
-      eligible_per_amount_usd: 13,
-      max_usable_per_policy: 180,
-      eligible_plans: [
-        "唯一挚保 — 癌症及严重传染病保障系列",
-        "唯一挚保 — 全面保障系列",
-        "自愿医保灵活计划",
-        "自愿医保标准计划",
-        "自愿医保尊耀计划",
-        "自愿医保睿选计划",
-        "智护癌症保",
-        "癌症全方位保障系列",
-        "守康易危疾保",
-        "守康易定期寿险计划",
-        "全程守护健康保",
-        "进添计划 — 癌症保障系列",
-        "都市三保医疗危疾保障计划系列",
-        "自选人身意外保险",
-        "尊耀医疗计划系列",
-        "尊耀明珠医疗计划",
-        "银意保",
-        "简护危疾保系列",
-        "友心意医疗保障计划",
-        "特级健康之宝医疗保障计划系列",
-        "童年意家保", "盛年意家保", "丰年意家保",
-        "挚诚定期寿险计划系列",
-        "尊诚定期寿险计划系列",
-        "睿选明珠医疗计划",
-        "睿选医疗计划"
-      ]
-    }
-  };
+  // ===== 按 PDF 规则（USD 等值） =====
+  // 扣减顺序：HK$10,000 -> HK$500 -> HK$200 -> HK$100  (PDF 条款写明顺序)
+  const COUPONS = [
+    { key:"C1250", face:1250, hkd:10000, name:"10,000港元电子保费现金券", eligibleEvery:12500, plan:"general" }, // 年度化保费每满 12,500USD 可 1 张
+    { key:"C63",   face:63,   hkd:500,   name:"500港元电子保费现金券",    eligibleEvery:625,   plan:"general" }, // 每满 625USD 可 1 张
+    { key:"C25",   face:25,   hkd:200,   name:"200港元电子保费现金券",    eligibleEvery:250,   plan:"specified" }, // 指定保障
+    { key:"C13",   face:13,   hkd:100,   name:"100港元电子保费现金券",    eligibleEvery:125,   plan:"specified" }, // 指定保障
+  ];
 
-  const deductionOrder = [1250, 125, 63, 25, 13];
-  const maxDeductionUSD = 2925;
+  // 每张保单扣减上限（USD）
+  const MAX_DEDUCT = 2925; // HK$22,500 等值 USD 2,925
 
-  function n(v){
-    if (v === null || v === undefined) return NaN;
-    const s = String(v).replace(/,/g,'').replace(/\$/g,'').trim();
-    if (!s) return NaN;
-    return Number(s);
+  // 特选客户额外可用券（来自 PDF：4张500 + 3张200）
+  function vipExtraPool(vip, planType){
+    if(vip !== "loyalty") return {};
+    // 500券一般都可用；200券仅指定保障可用（按总条款适用范围做限制）
+    const pool = { C63: 4 };
+    if(planType === "specified") pool.C25 = 3;
+    return pool;
   }
 
-  function clamp(v, min, max){
-    return Math.min(Math.max(v, min), max);
+  function fmtMoney(ccy, n){
+    const v = Math.round((n + Number.EPSILON) * 100) / 100;
+    return `${ccy} ${v.toLocaleString(undefined,{minimumFractionDigits:0, maximumFractionDigits:2})}`;
   }
 
-  function checkPlanEligibility(planName, couponValue){
-    const cfg = couponConfigs[couponValue];
-    const name = (planName || "").trim();
-
-    if (!name) return true; // 计划名空时，直接不做限制（演示）
-
-    // 1250/125：排除 ILAS / 投资连系等（包含关键字即排除）
-    if (couponValue === 1250 || couponValue === 125){
-      const ex = cfg.excluded_plans || [];
-      for (const kw of ex){
-        if (kw && name.includes(kw)) return false;
-      }
-      return true;
-    }
-
-    // 25/13：仅指定计划可用（包含其一即可）
-    if (couponValue === 25 || couponValue === 13){
-      const allow = cfg.eligible_plans || [];
-      for (const kw of allow){
-        if (kw && name.includes(kw)) return true;
-      }
-      return false;
-    }
-
-    // 63：你 Python 默认全适用（这里保持一致）
-    return true;
+  function computeAnnualised(payMode, amount){
+    // 年缴：年度化 = 输入金额
+    // 一次性：年度化 = 一次性保费的 10%
+    if(payMode === "single") return amount * 0.10;
+    return amount;
   }
 
-  function calculateCoupons(annualizedPremiumUSD, planName, isIlas){
-    let used = {};
-    let remaining = annualizedPremiumUSD;
-    let totalDeduction = 0;
+  function calc(){
+    const payMode = document.getElementById("payMode").value;
+    const planType = document.getElementById("planType").value;
+    const ccy = document.getElementById("ccy").value;
+    const vip = document.getElementById("vip").value;
 
-    const validCoupons = isIlas ? [63, 25, 13] : deductionOrder; // ILAS 限制 :contentReference[oaicite:8]{index=8}
+    const raw = Number(document.getElementById("amount").value || 0);
+    const warnBox = document.getElementById("warnBox");
+    warnBox.style.display = "none";
+    warnBox.textContent = "";
 
-    for (const couponValue of validCoupons){
-      if (remaining <= 0) continue;
+    if(!raw || raw <= 0){
+      warnBox.style.display = "block";
+      warnBox.textContent = "请输入有效金额。";
+      return null;
+    }
 
-      const cfg = couponConfigs[couponValue];
+    // ILAS 不适用（直接提示）
+    if(planType === "ilas"){
+      return {
+        ccy, before: raw,
+        annualised: computeAnnualised(payMode, raw),
+        deduction: 0,
+        payable: computeAnnualised(payMode, raw),
+        used: []
+      };
+    }
 
-      if (planName && !checkPlanEligibility(planName, couponValue)){
-        continue;
-      }
+    const annualised = computeAnnualised(payMode, raw); // 用年度化口径去判断可用张数/门槛
+    let remaining = annualised;
 
-      let maxByPremium = Math.floor(remaining / cfg.eligible_per_amount_usd);
+    // 先计算“系统自动可用张数”（AIA 计算器不要求用户输入持券数量）
+    // 规则：每满 eligibleEvery 计算 1 张；再按扣减顺序扣减，并受上限 MAX_DEDUCT 限制
+    const autoCounts = {};
+    for(const c of COUPONS){
+      if(c.plan === "specified" && planType !== "specified") continue;
+      if(c.plan === "general" && planType === "ilas") continue;
+      // 自动张数
+      autoCounts[c.key] = Math.floor(annualised / c.eligibleEvery);
+    }
 
-      if (remaining < cfg.min_premium_usd) maxByPremium = 0;
+    // 加上特选客户额外券池（可选）
+    const extra = vipExtraPool(vip, planType);
+    for(const k of Object.keys(extra)){
+      autoCounts[k] = (autoCounts[k] || 0) + extra[k];
+    }
 
-      let usableCount = Math.min(maxByPremium, cfg.max_usable_per_policy);
+    // 按扣减顺序真正扣减：不能超过 remaining，也不能超过 MAX_DEDUCT
+    const used = [];
+    let totalDeduct = 0;
 
-      if (totalDeduction + usableCount * couponValue > maxDeductionUSD){
-        const remainDed = maxDeductionUSD - totalDeduction;
-        usableCount = Math.min(usableCount, Math.floor(remainDed / couponValue));
-      }
+    for(const c of COUPONS){
+      const canUse = autoCounts[c.key] || 0;
+      if(canUse <= 0) continue;
 
-      if (usableCount > 0){
-        used[couponValue] = usableCount;
-        const deduction = usableCount * couponValue;
-        totalDeduction += deduction;
-        remaining -= deduction;
+      // 受“余额/上限”限制后的可用张数
+      const byRemaining = Math.floor(remaining / c.face);
+      const byCap = Math.floor((MAX_DEDUCT - totalDeduct) / c.face);
+      const useN = Math.max(0, Math.min(canUse, byRemaining, byCap));
+      if(useN <= 0) continue;
+
+      used.push({ face:c.face, hkd:c.hkd, count:useN, name:c.name });
+      const d = useN * c.face;
+      remaining -= d;
+      totalDeduct += d;
+
+      if(totalDeduct >= MAX_DEDUCT) break;
+    }
+
+    const payable = Math.max(0, annualised - totalDeduct);
+
+    return {
+      ccy,
+      before: annualised, // 展示口径：首年年度化保费
+      annualised,
+      deduction: totalDeduct,
+      payable,
+      used,
+      payMode,
+      planType,
+      vip,
+      rawInput: raw
+    };
+  }
+
+  function render(res){
+    const wrap = document.getElementById("resultWrap");
+    wrap.style.display = "block";
+
+    const totalDeduction = document.getElementById("totalDeduction");
+    const couponList = document.getElementById("couponList");
+    const payableAfter = document.getElementById("payableAfter");
+    const beforeAmt = document.getElementById("beforeAmt");
+    const footnote = document.getElementById("footnote");
+    const warnBox = document.getElementById("warnBox");
+
+    couponList.innerHTML = "";
+
+    beforeAmt.textContent = fmtMoney(res.ccy, res.before);
+    totalDeduction.textContent = fmtMoney(res.ccy, res.deduction);
+    payableAfter.textContent = fmtMoney(res.ccy, res.payable);
+
+    if(res.planType === "ilas"){
+      warnBox.style.display = "block";
+      warnBox.textContent = "提示：ILAS / 万用 / 投连类别按条款不适用电子保费现金券。";
+    }else{
+      warnBox.style.display = "none";
+    }
+
+    if(res.used.length === 0){
+      couponList.innerHTML = `<div class="note">当前条件下没有可用的电子保费现金券（或已受上限/余额限制）。</div>`;
+    }else{
+      for(const u of res.used){
+        const card = document.createElement("div");
+        card.className = "coupon";
+        card.innerHTML = `
+          <div class="couponLeft">
+            <div class="couponValue">$${u.face} <span style="font-size:14px;color:var(--muted);font-weight:800;">${res.ccy}</span></div>
+            <div class="couponSub">（HKD ${u.hkd.toLocaleString()}）电子保费现金券</div>
+          </div>
+          <div class="couponRight">${u.count} 张</div>
+        `;
+        couponList.appendChild(card);
       }
     }
 
-    return { used, totalDeduction, remaining };
+    const modeText = (res.payMode === "single") ? "一次性缴付（已按 10% 换算年度化）" : "年缴";
+    const vipText = (res.vip === "loyalty") ? "特选客户（额外券已计入）" : "非特选客户";
+    footnote.textContent = `当前口径：${modeText}；${vipText}。每张保单扣减上限：USD 2,925。`;
   }
 
-  // ====== 年度化保费：这里是你网页需要“修正/补全”的入口 ======
-  function calcAnnualizedPremiumUSD(opts){
-    const {
-      premiumType, // lump_sum / annual
-      policyType,  // ilas / non_ilas / plan2
-      premiumAmountUSD,
-      regularPremiumUSD,
-      extraPremiumUSD,
-      hasDiscount,
-      discountRatePct
-    } = opts;
-
-    const r = clamp((hasDiscount ? (Number(discountRatePct)||0) : 0) / 100, 0, 1);
-    const discFactor = 1 - r;
-
-    if (premiumType === "annual"){
-      // 年缴：年度化保费按年缴金额（演示版：若有折扣则先折扣）
-      return premiumAmountUSD * discFactor;
+  function syncLabel(){
+    const payMode = document.getElementById("payMode").value;
+    const amtLabel = document.getElementById("amtLabel");
+    if(payMode === "single"){
+      amtLabel.textContent = "一次性缴付保费金额";
+    }else{
+      amtLabel.textContent = "年度化保费金额";
     }
-
-    // 一次性缴付：
-    // - 非“计划2”：年度化保费按一次性缴付保费的换算口径（你条款截图是 10% 思路；这里按 10% 做演示）
-    // - “计划2”：年度化保费 = 首年定期保费(100%) + 额外保费(10%)（示例4思路）
-    if (policyType === "plan2"){
-      const regularAdj = (regularPremiumUSD || 0) * discFactor;
-      const extraAdj   = (extraPremiumUSD   || 0) * discFactor;
-      return regularAdj + extraAdj * 0.1;
-    }
-
-    return premiumAmountUSD * discFactor * 0.1;
   }
 
-  function money(x){
-    if (!isFinite(x)) return "-";
-    return "$" + x.toFixed(2);
-  }
-
-  // ====== UI wiring ======
-  const el = (id)=>document.getElementById(id);
-
-  const premiumTypeEl = el("premiumType");
-  const policyTypeEl  = el("policyType");
-  const planNameEl    = el("planName");
-  const premiumAmountEl = el("premiumAmount");
-  const regularPremiumRow = el("regularPremiumRow");
-  const extraPremiumRow   = el("extraPremiumRow");
-  const regularPremiumEl  = el("regularPremium");
-  const extraPremiumEl    = el("extraPremium");
-  const hasDiscountEl   = el("hasDiscount");
-  const discountRateRow = el("discountRateRow");
-  const discountRateEl  = el("discountRate");
-
-  function refreshVisibility(){
-    const policyType = policyTypeEl.value;
-    const premiumType = premiumTypeEl.value;
-
-    const showPlan2 = (policyType === "plan2");
-    regularPremiumRow.style.display = showPlan2 ? "" : "none";
-    extraPremiumRow.style.display   = showPlan2 ? "" : "none";
-
-    // plan2 模式下，总保费输入可不强制（但保留）
-    premiumAmountEl.placeholder = (premiumType === "annual")
-      ? "例如 5000（年缴）"
-      : (showPlan2 ? "可留空；或填首年总保费(=定期+额外)（演示）" : "例如 10000（一次性缴付）");
-
-    discountRateRow.style.display = hasDiscountEl.checked ? "" : "none";
-  }
-
-  premiumTypeEl.addEventListener("change", refreshVisibility);
-  policyTypeEl.addEventListener("change", refreshVisibility);
-  hasDiscountEl.addEventListener("change", refreshVisibility);
-
-  function renderResult({annualized, isIlas, used, totalDeduction, remaining}){
-    el("kAnnualized").textContent = money(annualized);
-    el("kIlas").innerHTML = isIlas ? '<span class="ok">是（禁用 1250/125）</span>' : '<span class="no">否</span>';
-    el("kDeduction").textContent  = money(totalDeduction);
-    el("kPayable").textContent    = money(remaining);
-
-    const tbody = el("couponRows");
-    const keys = Object.keys(used).map(Number).sort((a,b)=>b-a);
-
-    if (!keys.length){
-      tbody.innerHTML = `<tr><td colspan="4" class="small">无可用现金券（或计划名不符合 200/100 券的指定名单）</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = keys.map(v=>{
-      const c = used[v];
-      const cfg = couponConfigs[v];
-      return `
-        <tr>
-          <td>${v}</td>
-          <td>${cfg.name}</td>
-          <td>${c}</td>
-          <td>${money(c * v)}</td>
-        </tr>
-      `;
-    }).join("");
-  }
-
-  el("btnCalc").addEventListener("click", ()=>{
-    const premiumType = premiumTypeEl.value;
-    const policyType  = policyTypeEl.value;
-    const isIlas = (policyType === "ilas");
-
-    const planName = planNameEl.value || "";
-
-    const premiumAmount = n(premiumAmountEl.value);
-    const regularPremium = n(regularPremiumEl.value);
-    const extraPremium   = n(extraPremiumEl.value);
-
-    const hasDiscount = hasDiscountEl.checked;
-    const discountRate = n(discountRateEl.value);
-
-    // 简单校验：plan2 至少要填定期+额外
-    if (policyType === "plan2"){
-      if (!isFinite(regularPremium) || !isFinite(extraPremium)){
-        alert("“计划2”模式请填写：首年定期保费 + 额外保费（USD）");
-        return;
-      }
-    } else {
-      if (!isFinite(premiumAmount)){
-        alert("请填写保费金额（USD）");
-        return;
-      }
-    }
-
-    // 计算年度化保费
-    const annualized = calcAnnualizedPremiumUSD({
-      premiumType,
-      policyType,
-      premiumAmountUSD: isFinite(premiumAmount) ? premiumAmount : ((regularPremium||0)+(extraPremium||0)),
-      regularPremiumUSD: isFinite(regularPremium) ? regularPremium : 0,
-      extraPremiumUSD: isFinite(extraPremium) ? extraPremium : 0,
-      hasDiscount,
-      discountRatePct: isFinite(discountRate) ? discountRate : 0
-    });
-
-    // 计算现金券
-    const { used, totalDeduction, remaining } = calculateCoupons(annualized, planName, isIlas);
-    renderResult({ annualized, isIlas, used, totalDeduction, remaining });
+  document.getElementById("payMode").addEventListener("change", syncLabel);
+  document.getElementById("calcBtn").addEventListener("click", ()=>{
+    const res = calc();
+    if(res) render(res);
   });
 
-  el("btnFillDemo").addEventListener("click", ()=>{
-    premiumTypeEl.value = "lump_sum";
-    policyTypeEl.value  = "plan2";
-    planNameEl.value    = "丰年意家保"; // 示例4里出现过的计划名（演示）
-    premiumAmountEl.value = "5000";
-    regularPremiumEl.value = "620";
-    extraPremiumEl.value = "4380";
-    hasDiscountEl.checked = false;
-    discountRateEl.value = "";
-    refreshVisibility();
-  });
-
-  el("btnReset").addEventListener("click", ()=>{
-    premiumTypeEl.value = "lump_sum";
-    policyTypeEl.value  = "non_ilas";
-    planNameEl.value = "";
-    premiumAmountEl.value = "";
-    regularPremiumEl.value = "";
-    extraPremiumEl.value = "";
-    hasDiscountEl.checked = false;
-    discountRateEl.value = "";
-    refreshVisibility();
-    el("kAnnualized").textContent = "-";
-    el("kIlas").textContent = "-";
-    el("kDeduction").textContent = "-";
-    el("kPayable").textContent = "-";
-    el("couponRows").innerHTML = `<tr><td colspan="4" class="small">暂无结果</td></tr>`;
-  });
-
-  refreshVisibility();
-})();
+  syncLabel();
 </script>
 </body>
 </html>
