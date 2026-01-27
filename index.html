@@ -200,16 +200,16 @@
 
 <script>
 (function(){
-  // 每张新保单使用现金券之保费扣减上限：HKD 22,500
+  // ✅ 每张保单现金券扣减上限：HKD 22,500
   const MAX_DEDUCT_HKD = 22500;
 
-  // 券定义：HKD 面额 + USD 展示面额（按条款映射）
-  // ✅ 500/1000/10000：general 可用（非ILAS等除外）
-  // ✅ 200/100：只适用指定保障计划
+  // ✅ 券定义（保持你“原来对齐AIA”的组合逻辑）
+  // general（非ILAS）：只用 10000(HKD)/500(HKD)
+  // specified：额外可用 200(HKD)/100(HKD)
+  // ⚠️ 不加入 1000(HKD)/USD125，避免破坏你已对齐的结果
   const COUPONS = [
-    // 非ILAS通用（扣减次序：10000 -> 1000 -> 500 -> ...）
+    // 非ILAS通用
     { key:"C10000", hkd:10000, usd:1250, eligibleEveryUSD:12500, allow:"general" },
-    { key:"C1000",  hkd:1000,  usd:125,  eligibleEveryUSD:1250,  allow:"general" },
     { key:"C500",   hkd:500,   usd:63,   eligibleEveryUSD:625,   allow:"general" },
 
     // 指定保障计划
@@ -225,29 +225,27 @@
   }
 
   function computeAnnualisedUSD(payMode, amountUSD){
-    // 规则：一次性缴付的年度化保费 = 一次性缴付保费的 10%
-    // （你之前页面也一直是这样口径）
+    // 一次性：年度化 = 一次性保费 * 10%
+    // 年缴：年度化 = 输入金额
     return (payMode === "single") ? (amountUSD * 0.10) : amountUSD;
   }
 
   function vipExtras(vip, planType){
-    // 条款：特选客户 4张500 + 3张200
-    // 但 200 现金券本身只适用于指定保障计划，所以这里仍然只在 specified 时加 200
+    // 按你当前Demo保留：VIP 给 4张500；指定保障计划再加3张200
     if(vip !== "loyalty") return [];
     const extras = [{ key:"C500", count:4 }];
     if(planType === "specified") extras.push({ key:"C200", count:3 });
     return extras;
   }
 
-  // ✅ 核心：上限用 HKD 控制，资格用年度化USD控制
   function computeUsage(annualisedUSD, planType, vip){
     let eligibilityPoolUSD = annualisedUSD;
     let capPoolHKD = MAX_DEDUCT_HKD;
 
-    const usedMap = { C10000:0, C1000:0, C500:0, C200:0, C100:0 };
+    const usedMap = { C10000:0, C500:0, C200:0, C100:0 };
 
     for(const c of COUPONS){
-      // ✅ 关键修复：200/100 只允许指定保障计划；general 不允许（所以 single 5000 应为 0）
+      // ✅ 关键：200/100 只允许指定保障计划；general 不允许
       if(c.allow === "specified" && planType !== "specified") continue;
 
       const maxByEligibility = Math.floor(eligibilityPoolUSD / c.eligibleEveryUSD);
@@ -262,7 +260,7 @@
       if(capPoolHKD <= 0) break;
     }
 
-    // 叠加特选额外券（同样受 HKD 上限控制 & 适用范围限制）
+    // 叠加特选额外券（仍受上限控制 + 适用范围限制）
     const extras = vipExtras(vip, planType);
     for(const e of extras){
       if(capPoolHKD <= 0) break;
