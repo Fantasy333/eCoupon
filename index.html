@@ -17,11 +17,16 @@
       --radius:16px;
     }
     body{
-      margin:0;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",Arial,sans-serif;
-      background:var(--bg);
-      color:var(--text);
-    }
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+
+  /* ✅ 新增：防止内容跑偏 */
+  display:flex;
+  justify-content:center;
+  overflow-x:hidden;
+}
     .topbar{
       background:var(--aia);
       color:#fff;
