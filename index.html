@@ -15,13 +15,11 @@
       --shadow:0 8px 24px rgba(0,0,0,.08);
       --radius:16px;
 
-      /* 券颜色（参考你截图风格） */
       --gold:#d6b26e;   /* 1250 */
       --purple:#6b6ee6; /* 63 */
       --blue:#3b82f6;   /* 25 */
       --pink:#e11d48;   /* 13 */
     }
-
     *{ box-sizing:border-box; }
 
     html,body{
@@ -32,19 +30,26 @@
       background:var(--bg);
       color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
-    }
 
-    /* ✅ 关键：防止 iOS/企业微信聚焦输入时页面横向偏移 */
-    body{
-      display:flex;
-      justify-content:center;
+      /* ✅ 企业微信/WKWebView 防横向溢出 */
       overflow-x:hidden;
+      position:relative;
+      -webkit-text-size-adjust:100%;
     }
 
+    /* ✅ 再包一层 app，后面用 JS 强制 translateX(0) */
+    #app{
+      width:100%;
+      overflow-x:hidden;
+      transform:translateX(0);
+      will-change:transform;
+    }
+
+    /* ✅ 容器居中（稳定） */
     .page{
       width:100%;
       max-width:720px;
-      min-height:100vh;
+      margin:0 auto;
     }
 
     .topbar{
@@ -52,10 +57,11 @@
       color:#fff;
       padding:14px 16px;
       font-weight:950;
-      text-align:center;     /* ✅ 居中 */
+      text-align:center;
       position:sticky;
       top:0;
       z-index:10;
+      left:0; right:0;
     }
 
     .wrap{
@@ -112,7 +118,6 @@
       outline:none;
       font-size:15px;
       background:#fff;
-      box-sizing:border-box;
     }
 
     .btn{
@@ -171,7 +176,6 @@
       font-weight:1000;
     }
 
-    /* ✅ 不同面额颜色 */
     .couponValue.usd1250{ color:var(--gold); }
     .couponValue.usd63{ color:var(--purple); }
     .couponValue.usd25{ color:var(--blue); }
@@ -192,7 +196,6 @@
       font-weight:900;
     }
 
-    /* ✅ 新版底部说明 */
     .footnoteNew{
       margin-top:14px;
       font-size:13px;
@@ -214,6 +217,7 @@
 </head>
 
 <body>
+<div id="app">
   <div class="page">
     <div class="topbar">智能电子保费现金券计算器</div>
 
@@ -250,7 +254,7 @@
 
           <div class="row">
             <label id="amtLabel">年度化保费金额</label>
-            <input id="amount" type="number" min="0" step="1" placeholder="例如 10000" />
+            <input id="amount" type="number" min="0" step="1" placeholder="例如 10000" inputmode="numeric" />
           </div>
 
           <div class="row span2">
@@ -289,7 +293,6 @@
             <div class="v" id="beforeAmt">USD 0</div>
           </div>
 
-          <!-- ✅ 新版底部说明（简体 + 首段红色） -->
           <div class="footnoteNew" id="footnoteNew">
             <span class="hot">温馨提示：客户可以善用AIA+手机应用程序/网页版转让电子保费现金券</span>
             保费只供参考，并不包括大额保费折扣及保费回赠优惠。投保申请可能需要符合其他条款及细则之要求方能享受优惠。上述保费金额并未包括须向保险业监管局缴付的保费征费，实际可享优惠以保单缮发当刻计算，最终金额将以账单中注明为准。
@@ -298,21 +301,64 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
+</div>
 
 <script>
 (function(){
-  // ✅ 正确：每张保单现金券扣减上限是 HKD 22,500
+  // =========================
+  // ✅ 企业微信内置浏览器：防横向跑偏（只修 UI，不动运算）
+  // =========================
+  const app = document.getElementById("app");
+  let rafLock = 0;
+
+  function hardFixX(){
+    if (rafLock) cancelAnimationFrame(rafLock);
+    rafLock = requestAnimationFrame(()=>{
+      // 1) 强制容器不产生 translate 偏移
+      app.style.transform = "translateX(0)";
+
+      // 2) 强制横向滚动归零（html/body/窗口都处理）
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+      try { window.scrollTo({ left: 0, top: window.scrollY, behavior: "instant" }); }
+      catch(e){ window.scrollTo(0, window.scrollY); }
+
+      // 3) 再锁一次 overflow-x（有些 WKWebView 会被重写）
+      document.documentElement.style.overflowX = "hidden";
+      document.body.style.overflowX = "hidden";
+    });
+  }
+
+  // 聚焦时把输入框滚到中间（避免键盘挤压造成奇怪重排）
+  function focusCenter(el){
+    setTimeout(()=>{
+      try{ el.scrollIntoView({ block:"center", inline:"nearest", behavior:"instant" }); }
+      catch(e){ el.scrollIntoView(true); }
+      hardFixX();
+    }, 50);
+  }
+
+  window.addEventListener("focusin", hardFixX, { passive:true });
+  window.addEventListener("focusout", hardFixX, { passive:true });
+  window.addEventListener("resize", ()=>setTimeout(hardFixX, 0), { passive:true });
+  window.addEventListener("orientationchange", ()=>setTimeout(hardFixX, 0), { passive:true });
+
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", ()=>setTimeout(hardFixX, 0), { passive:true });
+    window.visualViewport.addEventListener("scroll", ()=>setTimeout(hardFixX, 0), { passive:true });
+  }
+
+  // =========================
+  // ✅ 运算逻辑（保持不变）
+  // =========================
   const MAX_DEDUCT_HKD = 22500;
 
-  // 券定义：HKD 面额 + USD 展示面额（按你截图的口径固定展示）
   const COUPONS = [
-    // 非ILAS通用
     { key:"C10000", hkd:10000, usd:1250, eligibleEveryUSD:12500, allow:"general" },
     { key:"C500",   hkd:500,   usd:63,   eligibleEveryUSD:625,   allow:"general" },
-
-    // 指定保障计划（如需）
     { key:"C200",   hkd:200,   usd:25,   eligibleEveryUSD:250,   allow:"specified" },
     { key:"C100",   hkd:100,   usd:13,   eligibleEveryUSD:125,   allow:"specified" },
   ];
@@ -325,20 +371,16 @@
   }
 
   function computeAnnualisedUSD(payMode, amountUSD){
-    // 一次性：年度化 = 一次性保费 * 10%
-    // 年缴：年度化 = 输入金额
     return (payMode === "single") ? (amountUSD * 0.10) : amountUSD;
   }
 
   function vipExtras(vip, planType){
-    // 你暂时不关心也可以保留；如果不需要，直接 return []
     if(vip !== "loyalty") return [];
     const extras = [{ key:"C500", count:4 }];
     if(planType === "specified") extras.push({ key:"C200", count:3 });
     return extras;
   }
 
-  // ✅ 核心：上限用 HKD 控制，资格用年度化USD控制
   function computeUsage(annualisedUSD, planType, vip){
     let eligibilityPoolUSD = annualisedUSD;
     let capPoolHKD = MAX_DEDUCT_HKD;
@@ -360,7 +402,6 @@
       if(capPoolHKD <= 0) break;
     }
 
-    // 叠加特选额外券（同样受 HKD 上限控制）
     const extras = vipExtras(vip, planType);
     for(const e of extras){
       if(capPoolHKD <= 0) break;
@@ -415,7 +456,6 @@
   }
 
   function couponValueClass(usd){
-    // ✅ 只影响 UI 颜色，不影响运算
     if(usd === 1250) return "usd1250";
     if(usd === 63) return "usd63";
     if(usd === 25) return "usd25";
@@ -459,6 +499,9 @@
         list.appendChild(card);
       }
     }
+
+    // ✅ 渲染后立即纠偏（企业微信经常在 DOM 变化后横移）
+    setTimeout(hardFixX, 0);
   }
 
   function syncLabel(){
@@ -471,14 +514,26 @@
       `说明：一次性缴付会先按条款换算年度化（10%）再计算张数；年缴直接以年度化金额计算。每张保单扣减上限：HKD ${MAX_DEDUCT_HKD.toLocaleString()}。`;
   }
 
-  $("payMode").addEventListener("change", syncLabel);
+  $("payMode").addEventListener("change", ()=>{
+    syncLabel();
+    setTimeout(hardFixX, 0);
+  });
+
   $("calcBtn").addEventListener("click", ()=>{
     const res = calc();
     if(res) render(res);
   });
 
+  // ✅ 输入框聚焦时：居中 + 纠偏
+  const amt = $("amount");
+  amt.addEventListener("focus", ()=>focusCenter(amt), { passive:true });
+  amt.addEventListener("click", ()=>focusCenter(amt), { passive:true });
+  amt.addEventListener("input", ()=>setTimeout(hardFixX, 0), { passive:true });
+
   syncLabel();
   renderCapNote();
+  // 初始也纠偏一次
+  setTimeout(hardFixX, 0);
 })();
 </script>
 </body>
