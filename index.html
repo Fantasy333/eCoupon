@@ -2,9 +2,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>智能电子保费现金券计算器</title>
-
   <style>
     :root{
       --aia:#b80f2e;
@@ -15,35 +14,58 @@
       --border:#e5e7eb;
       --shadow:0 8px 24px rgba(0,0,0,.08);
       --radius:16px;
-    }
 
-    /* ✅ 核心：稳定的移动端布局 */
-    html, body{
-      width:100%;
+      --gold:#d6b26e;   /* 1250 */
+      --purple:#6b6ee6; /* 63 */
+      --blue:#3b82f6;   /* 25 */
+      --pink:#e11d48;   /* 13 */
+    }
+    *{ box-sizing:border-box; }
+
+    html,body{
       margin:0;
       padding:0;
-      overflow-x:hidden;
+      width:100%;
+      min-height:100%;
       background:var(--bg);
       color:var(--text);
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
-        "PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+
+      /* ✅ 企业微信/WKWebView 防横向溢出 */
+      overflow-x:hidden;
+      position:relative;
+      -webkit-text-size-adjust:100%;
     }
 
-    *{ box-sizing:border-box; }
+    /* ✅ 再包一层 app，后面用 JS 强制 translateX(0) */
+    #app{
+      width:100%;
+      overflow-x:hidden;
+      transform:translateX(0);
+      will-change:transform;
+    }
+
+    /* ✅ 容器居中（稳定） */
+    .page{
+      width:100%;
+      max-width:720px;
+      margin:0 auto;
+    }
 
     .topbar{
       background:var(--aia);
       color:#fff;
       padding:14px 16px;
-      font-weight:900;
+      font-weight:950;
       text-align:center;
       position:sticky;
       top:0;
       z-index:10;
+      left:0; right:0;
     }
 
     .wrap{
-      max-width:720px;
+      width:100%;
       margin:0 auto;
       padding:14px 14px 40px;
     }
@@ -65,7 +87,7 @@
 
     .sectionTitle{
       font-size:18px;
-      font-weight:900;
+      font-weight:950;
       margin:6px 0 12px;
     }
 
@@ -88,11 +110,12 @@
       font-size:14px;
     }
 
-    select, input{
+    select,input{
       width:100%;
       padding:10px 12px;
       border-radius:12px;
       border:1px solid var(--border);
+      outline:none;
       font-size:15px;
       background:#fff;
     }
@@ -105,9 +128,11 @@
       border-radius:14px;
       background:var(--aia);
       color:#fff;
-      font-weight:900;
+      font-weight:950;
       font-size:16px;
+      cursor:pointer;
     }
+    .btn:active{ transform: translateY(1px); }
 
     .resultWrap{ margin-top:14px; }
 
@@ -122,187 +147,170 @@
     .kv{
       display:flex;
       justify-content:space-between;
+      gap:10px;
       padding:8px 0;
       border-bottom:1px dashed var(--border);
-      gap:10px;
     }
-
     .kv:last-child{ border-bottom:none; }
 
     .k{ color:var(--muted); font-weight:800; }
-    .v{ font-weight:900; }
+    .v{ font-weight:950; }
+    .big{ font-size:30px; color:var(--aia); }
 
-    .big{
-      font-size:30px;
-      color:var(--aia);
-    }
-
-    .couponList{
-      display:grid;
-      gap:10px;
-      margin-top:12px;
-    }
+    .couponList{ display:grid; gap:10px; margin-top:12px; }
 
     .coupon{
       border:1px solid var(--border);
       border-radius:14px;
       padding:12px;
       display:flex;
-      justify-content:space-between;
       align-items:center;
-      background:linear-gradient(180deg,#fff,#fafafa);
+      justify-content:space-between;
+      background:linear-gradient(180deg,#fff, #fafafa);
     }
+
+    .couponLeft{ display:flex; flex-direction:column; gap:2px; }
 
     .couponValue{
-      font-size:26px;
-      font-weight:900;
-      color:#5b6ee1;
+      font-size:28px;
+      font-weight:1000;
     }
 
-    .couponSub{
-      color:var(--muted);
-      font-weight:800;
-      font-size:13px;
-    }
+    .couponValue.usd1250{ color:var(--gold); }
+    .couponValue.usd63{ color:var(--purple); }
+    .couponValue.usd25{ color:var(--blue); }
+    .couponValue.usd13{ color:var(--pink); }
 
-    .couponRight{
-      font-size:26px;
-      font-weight:900;
-      color:var(--aia);
-    }
+    .couponSub{ color:var(--muted); font-weight:800; }
+    .couponRight{ font-size:28px; font-weight:1000; color:var(--aia); }
+
+    .note{ margin-top:10px; color:var(--muted); font-size:13px; line-height:1.5; }
 
     .warn{
-      margin-top:12px;
-      padding:12px;
+      margin-top:10px;
+      padding:10px 12px;
       border-radius:14px;
-      background:#fff1f2;
-      border:1px solid #fecdd3;
-      color:#9f1239;
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      color:#9a3412;
       font-weight:900;
     }
 
-    .note{
-      margin-top:12px;
+    .footnoteNew{
+      margin-top:14px;
       font-size:13px;
-      line-height:1.6;
-      color:#444;
+      line-height:1.65;
+      color:#374151;
+      white-space:pre-wrap;
     }
-
-    .note .red{
+    .footnoteNew .hot{
       color:var(--aia);
-      font-weight:900;
+      font-weight:950;
     }
 
-    @media (min-width:680px){
+    @media (min-width: 680px){
       .grid{ grid-template-columns:1fr 1fr; }
-      .row{ grid-template-columns:170px 1fr; }
-      .span2{ grid-column:span 2; }
+      .row{ grid-template-columns: 170px 1fr; }
+      .span2{ grid-column: span 2; }
     }
   </style>
 </head>
 
 <body>
+<div id="app">
+  <div class="page">
+    <div class="topbar">智能电子保费现金券计算器</div>
 
-<div class="topbar">智能电子保费现金券计算器</div>
+    <div class="wrap">
+      <div class="hint">数据只作参考及只供内部使用</div>
 
-<div class="wrap">
+      <div class="panel">
+        <div class="sectionTitle">输入资料</div>
 
-  <div class="hint">数据只作参考及只供内部使用</div>
+        <div class="grid">
+          <div class="row span2">
+            <label>保费缴付年期</label>
+            <select id="payMode">
+              <option value="annual">年缴保费缴付期（不适用于半年缴 / 季缴 / 月缴）</option>
+              <option value="single">一次性保费缴付期</option>
+            </select>
+          </div>
 
-  <div class="panel">
-    <div class="sectionTitle">输入资料</div>
+          <div class="row span2">
+            <label>保险计划</label>
+            <select id="planType">
+              <option value="general">其他（非ILAS）</option>
+              <option value="specified">指定保障计划（可用$25/$13）</option>
+              <option value="ilas">ILAS / 万用 / 投连（不适用）</option>
+            </select>
+          </div>
 
-    <div class="grid">
+          <div class="row">
+            <label>币种</label>
+            <select id="ccy">
+              <option value="USD">USD</option>
+            </select>
+          </div>
 
-      <div class="row span2">
-        <label>保费缴付年期</label>
-        <select id="payMode">
-          <option value="annual">年缴保费缴付期（不适用于半年缴/季缴/月缴）</option>
-          <option value="single">一次性保费缴付期</option>
-        </select>
+          <div class="row">
+            <label id="amtLabel">年度化保费金额</label>
+            <input id="amount" type="number" min="0" step="1" placeholder="例如 10000" inputmode="numeric" />
+          </div>
+
+          <div class="row span2">
+            <label>是否特选客户（2026/01/01 - 2026/03/31）</label>
+            <select id="vip">
+              <option value="none">否</option>
+              <option value="loyalty">Recapture（尊贵客户VIP）/ Activation（推荐活动客户）</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn" id="calcBtn">计算</button>
+
+        <div class="note" id="capNote"></div>
+        <div class="warn" id="warnBox" style="display:none;"></div>
       </div>
 
-      <div class="row span2">
-        <label>保险计划</label>
-        <select id="planType">
-          <option value="general">其他（非ILAS）</option>
-          <option value="specified">指定保障计划</option>
-          <option value="ilas">ILAS / 投连 / 万用（不适用）</option>
-        </select>
-      </div>
+      <div class="resultWrap" id="resultWrap" style="display:none;">
+        <div class="resultCard">
+          <div class="sectionTitle">结果</div>
 
-      <div class="row">
-        <label>币种</label>
-        <select id="ccy">
-          <option value="USD">USD</option>
-        </select>
-      </div>
+          <div class="kv">
+            <div class="k">建议可使用以下电子保费现金券（总金额）</div>
+            <div class="v big" id="totalDeduction">USD 0</div>
+          </div>
 
-      <div class="row">
-        <label id="amtLabel">年度化保费金额</label>
-        <input id="amount" type="number" placeholder="例如 10000" />
-      </div>
+          <div class="couponList" id="couponList"></div>
 
-      <div class="row span2">
-        <label>是否特选客户</label>
-        <select id="vip">
-          <option value="none">否</option>
-          <option value="loyalty">是（特选客户）</option>
-        </select>
-      </div>
+          <div class="kv" style="margin-top:10px;">
+            <div class="k">保费折扣优惠后应缴首年年度化保费金额（包括以上电子保费现金券）</div>
+            <div class="v" id="payableAfter">USD 0</div>
+          </div>
 
-    </div>
+          <div class="kv">
+            <div class="k">优惠前应缴首年年度化保费金额</div>
+            <div class="v" id="beforeAmt">USD 0</div>
+          </div>
 
-    <button class="btn" id="calcBtn">计算</button>
-  </div>
-
-  <div class="resultWrap" id="resultWrap" style="display:none;">
-    <div class="resultCard">
-
-      <div class="sectionTitle">结果</div>
-
-      <div class="kv">
-        <div class="k">建议使用电子保费现金券（总金额）</div>
-        <div class="v big" id="totalDeduction">USD 0</div>
-      </div>
-
-      <div class="couponList" id="couponList"></div>
-
-      <div class="kv">
-        <div class="k">优惠后应缴首年年度化保费</div>
-        <div class="v" id="payableAfter">USD 0</div>
-      </div>
-
-      <div class="kv">
-        <div class="k">优惠前应缴首年年度化保费</div>
-        <div class="v" id="beforeAmt">USD 0</div>
-      </div>
-
-      <div class="note">
-        <p class="red">
-          温馨提示：客户可以善用 AIA+ 手机应用程序 / 网页版转让电子保费现金券
-        </p>
-        <p>
-          保费只供参考，并不包括大额保费折扣及保费回赠优惠。投保申请可能需要符合其他条款及细则之要求方能享受优惠。
-          上述保费金额并未包括须向保险业监管局缴付的保费征费，实际可享优惠以保单缮发当刻计算，最终金额将以账单中注明为准。
-        </p>
-        <p>
-          财务策划顾问应根据客户的需要和负担能力推介合适的保险产品和保障额。
-        </p>
-        <p>
-          此智能电子保费现金券计算器只载有一般资料及只供内部于港澳地区使用，并不构成任何销售建议及／或产品推介。
-          以上电子保费现金券及保费折扣优惠受条款及细则约束，AIA 有权随时更改相关推广活动而毋须另行通知。
-        </p>
+          <div class="footnoteNew" id="footnoteNew">
+            <span class="hot">温馨提示：客户可以善用AIA+手机应用程序/网页版转让电子保费现金券</span>
+            保费只供参考，并不包括大额保费折扣及保费回赠优惠。投保申请可能需要符合其他条款及细则之要求方能享受优惠。上述保费金额并未包括须向保险业监管局缴付的保费征费，实际可享优惠以保单缮发当刻计算，最终金额将以账单中注明为准。
+            财务策划顾问应根据客户的需要和负担能力推介合适的保险产品和保障额。
+            此智能电子保费现金券计算器只载有一般资料及只供内部于港澳地区使用，并不构成任何销售建议及/或有关产品之推介。于投保保险产品之前，客户须完成财务需要分析。有关上述产品特点、保障权益及条款、不保事项及主要风险详情，请参阅相关网站、产品简介及保单契约。以上的电子保费现金券及保费折扣优惠受条款及细则约束。AIA有权随时更改以上推广活动的条款及细则而毋须另行通知。
+          </div>
+        </div>
       </div>
 
     </div>
   </div>
-
 </div>
 
 <script>
 (function(){
-  
+  // =========================
+  // ✅ 企业微信内置浏览器：防横向跑偏（只修 UI，不动运算）
+  // =========================
   const app = document.getElementById("app");
   let rafLock = 0;
 
