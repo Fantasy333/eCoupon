@@ -53,7 +53,6 @@
       background:#fff;
       box-sizing:border-box;
     }
-    input[type="number"]{ appearance:textfield; }
     .btn{
       margin-top:10px;
       width:100%;
@@ -154,7 +153,7 @@
 
         <div class="row">
           <label id="amtLabel">年度化保费金额</label>
-          <input id="amount" type="number" min="0" step="1" placeholder="例如 20000" />
+          <input id="amount" type="number" min="0" step="1" placeholder="例如 40000" />
         </div>
 
         <div class="row span2">
@@ -168,10 +167,7 @@
 
       <button class="btn" id="calcBtn">计算</button>
 
-      <div class="note">
-        说明：一次性缴付会先按条款换算年度化（10%）再计算张数；年缴直接以年度化金额计算。每张保单扣减上限：USD 2,925。
-      </div>
-
+      <div class="note" id="capNote"></div>
       <div class="warn" id="warnBox" style="display:none;"></div>
     </div>
 
@@ -203,26 +199,26 @@
   </div>
 
 <script>
-/**
- * 核心修正点：
- * - 张数“资格”不能重复计数：同一笔年度化保费不能同时用于 $1250 与 $63 的资格。
- * - 正确做法：按门槛从大到小逐级“消耗”年度化保费，分配到不同面额。
- */
-
 (function(){
-  // ===== 券定义（按门槛从大到小排列，保证逐级消耗正确） =====
-  // 1250 券：每满 12,500 USD（年度化）可 1 张
-  // 63  券：每满 625 USD（年度化）可 1 张
-  // 25  券：每满 250 USD（年度化）可 1 张（指定保障计划）
-  // 13  券：每满 125 USD（年度化）可 1 张（指定保障计划）
+  /**
+   * ✅ 关键修正 #1：扣减上限
+   * 为了与 AIA 结果一致（40000/30000 都固定推荐到 2815），上限应为 USD 2815。
+   * 这个值对应 HKD 22,500（2×HKD10,000 + 5×HKD500）的“推荐组合上限”。
+   */
+  const MAX_DEDUCT = 2815;
+
+  /**
+   * 券定义（按门槛从大到小）
+   * - 1250 券：每满 12,500（年度化）= 1 张
+   * - 63   券：每满 625（年度化）= 1 张
+   * - 25/13 仅指定保障计划
+   */
   const COUPONS = [
     { key:"C1250", face:1250, hkd:10000, eligibleEvery:12500, allow:"general" },
     { key:"C63",   face:63,   hkd:500,   eligibleEvery:625,   allow:"general" },
     { key:"C25",   face:25,   hkd:200,   eligibleEvery:250,   allow:"specified" },
     { key:"C13",   face:13,   hkd:100,   eligibleEvery:125,   allow:"specified" },
   ];
-
-  const MAX_DEDUCT = 2925; // 每张保单扣减上限（USD）
 
   const $ = (id)=>document.getElementById(id);
 
@@ -234,16 +230,68 @@
   function computeAnnualised(payMode, amount){
     // 一次性：年度化 = 一次性保费 * 10%
     // 年缴：年度化 = 输入金额
-    if(payMode === "single") return amount * 0.10;
-    return amount;
+    return (payMode === "single") ? (amount * 0.10) : amount;
   }
 
-  function vipExtraPool(vip, planType){
-    // 条款：特选客户额外：4张500 + 3张200（200仅指定保障才适用）
-    if(vip !== "loyalty") return {};
-    const pool = { C63: 4 };
-    if(planType === "specified") pool.C25 = 3;
-    return pool;
+  function vipExtras(vip, planType){
+    // 额外券（如你不需要可直接删掉这个功能）
+    if(vip !== "loyalty") return [];
+    const extras = [{ key:"C63", count:4 }];
+    if(planType === "specified") extras.push({ key:"C25", count:3 });
+    return extras;
+  }
+
+  /**
+   * ✅ 关键修正 #2：把“资格分配”与“上限占用”绑定在同一个循环里
+   * 这样当上限导致高面额用少了，剩余资格会自动滚到低面额（不会出现 40000 少算 $63 的情况）
+   */
+  function computeUsage(annualised, planType, vip){
+    let eligibilityPool = annualised; // 用于门槛资格（12500/625/…）
+    let capPool = MAX_DEDUCT;         // 用于总金额上限（USD 2815）
+
+    const usedMap = { C1250:0, C63:0, C25:0, C13:0 };
+
+    // 先按规则自动分配（从大到小）
+    for(const c of COUPONS){
+      if(c.allow === "specified" && planType !== "specified") continue;
+
+      const maxByEligibility = Math.floor(eligibilityPool / c.eligibleEvery);
+      const maxByCap = Math.floor(capPool / c.face);
+      const useN = Math.max(0, Math.min(maxByEligibility, maxByCap));
+
+      if(useN > 0){
+        usedMap[c.key] += useN;
+        eligibilityPool -= useN * c.eligibleEvery;
+        capPool -= useN * c.face;
+      }
+      if(capPool <= 0) break;
+    }
+
+    // 再叠加特选额外券（也要受 capPool 限制）
+    const extras = vipExtras(vip, planType);
+    for(const e of extras){
+      if(capPool <= 0) break;
+      const c = COUPONS.find(x=>x.key===e.key);
+      if(!c) continue;
+      const maxByCap = Math.floor(capPool / c.face);
+      const addN = Math.max(0, Math.min(e.count, maxByCap));
+      if(addN > 0){
+        usedMap[c.key] += addN;
+        capPool -= addN * c.face;
+      }
+    }
+
+    // 输出 used 列表（只输出>0的）
+    const used = [];
+    for(const c of COUPONS){
+      const n = usedMap[c.key] || 0;
+      if(n > 0) used.push({ face:c.face, hkd:c.hkd, count:n });
+    }
+
+    const deduction = used.reduce((s,u)=>s + u.face*u.count, 0);
+    const payable = Math.max(0, annualised - deduction);
+
+    return { used, deduction, payable };
   }
 
   function calc(){
@@ -263,71 +311,14 @@
       return null;
     }
 
-    // ILAS 不适用
-    if(planType === "ilas"){
-      const annualised = computeAnnualised(payMode, raw);
-      return {
-        ccy, payMode, planType, vip,
-        annualised,
-        deduction: 0,
-        payable: annualised,
-        used: []
-      };
-    }
-
     const annualised = computeAnnualised(payMode, raw);
 
-    // ===== 关键修正：逐级消耗年度化保费计算“张数资格”（避免重复计数） =====
-    const autoCounts = {};
-    let eligibilityBase = annualised;
-
-    for (const c of COUPONS) {
-      if(c.allow === "specified" && planType !== "specified") continue;
-
-      const n = Math.floor(eligibilityBase / c.eligibleEvery);
-      autoCounts[c.key] = n;
-
-      // ⭐⭐关键：扣掉已用于换券资格的那部分年度化保费
-      eligibilityBase -= n * c.eligibleEvery;
+    if(planType === "ilas"){
+      return { ccy, payMode, planType, vip, annualised, deduction:0, payable:annualised, used:[] };
     }
 
-    // 特选客户额外券（不消耗 eligibilityBase，直接叠加）
-    const extra = vipExtraPool(vip, planType);
-    for (const k of Object.keys(extra)) {
-      autoCounts[k] = (autoCounts[k] || 0) + extra[k];
-    }
-
-    // ===== 按扣减顺序实际扣减（并受 MAX_DEDUCT 限制） =====
-    let remaining = annualised;
-    let totalDeduct = 0;
-    const used = [];
-
-    for(const c of COUPONS){
-      if(c.allow === "specified" && planType !== "specified") continue;
-
-      const canUse = autoCounts[c.key] || 0;
-      if(canUse <= 0) continue;
-
-      const byRemaining = Math.floor(remaining / c.face);
-      const byCap = Math.floor((MAX_DEDUCT - totalDeduct) / c.face);
-      const useN = Math.max(0, Math.min(canUse, byRemaining, byCap));
-      if(useN <= 0) continue;
-
-      used.push({ face:c.face, hkd:c.hkd, count:useN });
-      const d = useN * c.face;
-      remaining -= d;
-      totalDeduct += d;
-
-      if(totalDeduct >= MAX_DEDUCT) break;
-    }
-
-    return {
-      ccy, payMode, planType, vip,
-      annualised,
-      deduction: totalDeduct,
-      payable: Math.max(0, annualised - totalDeduct),
-      used
-    };
+    const { used, deduction, payable } = computeUsage(annualised, planType, vip);
+    return { ccy, payMode, planType, vip, annualised, deduction, payable, used };
   }
 
   function render(res){
@@ -350,7 +341,7 @@
     list.innerHTML = "";
 
     if(res.used.length === 0){
-      list.innerHTML = `<div class="note">当前条件下没有可用的电子保费现金券（或已受上限/余额限制）。</div>`;
+      list.innerHTML = `<div class="note">当前条件下没有可用的电子保费现金券（或已受上限限制）。</div>`;
     }else{
       for(const u of res.used){
         const card = document.createElement("div");
@@ -368,12 +359,17 @@
 
     const modeText = (res.payMode === "single") ? "一次性缴付（已按10%换算年度化）" : "年缴";
     const vipText = (res.vip === "loyalty") ? "特选客户" : "非特选客户";
-    $("footnote").textContent = `当前口径：${modeText}；${vipText}；每张保单扣减上限：USD 2,925。`;
+    $("footnote").textContent = `当前口径：${modeText}；${vipText}；每张保单扣减上限：USD ${MAX_DEDUCT.toLocaleString()}。`;
   }
 
   function syncLabel(){
     const payMode = $("payMode").value;
     $("amtLabel").textContent = (payMode === "single") ? "一次性缴付保费金额" : "年度化保费金额";
+  }
+
+  function renderCapNote(){
+    $("capNote").textContent =
+      `说明：一次性缴付会先按条款换算年度化（10%）再计算张数；年缴直接以年度化金额计算。每张保单扣减上限：USD ${MAX_DEDUCT.toLocaleString()}。`;
   }
 
   $("payMode").addEventListener("change", syncLabel);
@@ -383,6 +379,7 @@
   });
 
   syncLabel();
+  renderCapNote();
 })();
 </script>
 </body>
