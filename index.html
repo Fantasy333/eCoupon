@@ -23,9 +23,22 @@
   color:var(--text);
 
   /* ✅ 新增：防止内容跑偏 */
-  display:flex;
-  justify-content:center;
+
   overflow-x:hidden;
+}
+    html, body{
+  width:100%;
+  overflow-x:hidden;
+}
+
+*{ box-sizing:border-box; }
+
+/* ✅ iOS / 企业微信：输入聚焦时避免页面横向重排 */
+.wrap{
+  width:100%;
+  max-width:720px;
+  margin-left:auto;
+  margin-right:auto;
 }
     .topbar{
       background:var(--aia);
