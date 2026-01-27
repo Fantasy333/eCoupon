@@ -200,16 +200,19 @@
 
 <script>
 (function(){
-  // ✅ 正确：每张保单现金券扣减上限是 HKD 22,500
+  // 每张新保单使用现金券之保费扣减上限：HKD 22,500
   const MAX_DEDUCT_HKD = 22500;
 
-  // 券定义：HKD 面额 + USD 展示面额（按你截图的口径固定展示）
+  // 券定义：HKD 面额 + USD 展示面额（按条款映射）
+  // ✅ 500/1000/10000：general 可用（非ILAS等除外）
+  // ✅ 200/100：只适用指定保障计划
   const COUPONS = [
-    // 非ILAS通用
+    // 非ILAS通用（扣减次序：10000 -> 1000 -> 500 -> ...）
     { key:"C10000", hkd:10000, usd:1250, eligibleEveryUSD:12500, allow:"general" },
+    { key:"C1000",  hkd:1000,  usd:125,  eligibleEveryUSD:1250,  allow:"general" },
     { key:"C500",   hkd:500,   usd:63,   eligibleEveryUSD:625,   allow:"general" },
 
-    // 指定保障计划（如需）
+    // 指定保障计划
     { key:"C200",   hkd:200,   usd:25,   eligibleEveryUSD:250,   allow:"specified" },
     { key:"C100",   hkd:100,   usd:13,   eligibleEveryUSD:125,   allow:"specified" },
   ];
@@ -222,13 +225,14 @@
   }
 
   function computeAnnualisedUSD(payMode, amountUSD){
-    // 一次性：年度化 = 一次性保费 * 10%
-    // 年缴：年度化 = 输入金额
+    // 规则：一次性缴付的年度化保费 = 一次性缴付保费的 10%
+    // （你之前页面也一直是这样口径）
     return (payMode === "single") ? (amountUSD * 0.10) : amountUSD;
   }
 
   function vipExtras(vip, planType){
-    // 你暂时不关心也可以保留；如果不需要，直接 return []
+    // 条款：特选客户 4张500 + 3张200
+    // 但 200 现金券本身只适用于指定保障计划，所以这里仍然只在 specified 时加 200
     if(vip !== "loyalty") return [];
     const extras = [{ key:"C500", count:4 }];
     if(planType === "specified") extras.push({ key:"C200", count:3 });
@@ -236,20 +240,15 @@
   }
 
   // ✅ 核心：上限用 HKD 控制，资格用年度化USD控制
-  // 🔧【只改这里】增加 payMode 参数，并允许 “一次性缴费 + general” 使用 C200/C100 去拆余数
-  function computeUsage(annualisedUSD, planType, vip, payMode){
+  function computeUsage(annualisedUSD, planType, vip){
     let eligibilityPoolUSD = annualisedUSD;
     let capPoolHKD = MAX_DEDUCT_HKD;
 
-    const usedMap = { C10000:0, C500:0, C200:0, C100:0 };
+    const usedMap = { C10000:0, C1000:0, C500:0, C200:0, C100:0 };
 
     for(const c of COUPONS){
-      // ✅ 原来：只有 planType === specified 才能用 C200/C100
-      // ✅ 修复：一次性缴费（payMode===single）时，即使是 general（非ILAS）也允许用 C200/C100 拆余数
-      if(c.allow === "specified"){
-        const allowSmallDenom = (planType === "specified") || (payMode === "single");
-        if(!allowSmallDenom) continue;
-      }
+      // ✅ 关键修复：200/100 只允许指定保障计划；general 不允许（所以 single 5000 应为 0）
+      if(c.allow === "specified" && planType !== "specified") continue;
 
       const maxByEligibility = Math.floor(eligibilityPoolUSD / c.eligibleEveryUSD);
       const maxByCap = Math.floor(capPoolHKD / c.hkd);
@@ -263,12 +262,14 @@
       if(capPoolHKD <= 0) break;
     }
 
-    // 叠加特选额外券（同样受 HKD 上限控制）
+    // 叠加特选额外券（同样受 HKD 上限控制 & 适用范围限制）
     const extras = vipExtras(vip, planType);
     for(const e of extras){
       if(capPoolHKD <= 0) break;
       const c = COUPONS.find(x=>x.key===e.key);
       if(!c) continue;
+
+      if(c.allow === "specified" && planType !== "specified") continue;
 
       const maxByCap = Math.floor(capPoolHKD / c.hkd);
       const addN = Math.max(0, Math.min(e.count, maxByCap));
@@ -313,8 +314,7 @@
       return { ccy, payMode, planType, vip, annualisedUSD, deductionUSD:0, payableUSD:annualisedUSD, used:[] };
     }
 
-    // 🔧【只改这里】把 payMode 传进去
-    const { used, deductionUSD, payableUSD } = computeUsage(annualisedUSD, planType, vip, payMode);
+    const { used, deductionUSD, payableUSD } = computeUsage(annualisedUSD, planType, vip);
     return { ccy, payMode, planType, vip, annualisedUSD, deductionUSD, payableUSD, used };
   }
 
@@ -338,7 +338,7 @@
     list.innerHTML = "";
 
     if(res.used.length === 0){
-      list.innerHTML = `<div class="note">当前条件下没有可用的电子保费现金券（或已受上限限制）。</div>`;
+      list.innerHTML = `<div class="note">当前条件下没有可用的电子保费现金券（或未达年度化保费门槛/受上限限制）。</div>`;
     }else{
       for(const u of res.used){
         const card = document.createElement("div");
